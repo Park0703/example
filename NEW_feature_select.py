@@ -10,6 +10,37 @@ Created on Sun Jul 18 19:03:29 2021
     XGB : 127.9364564286
     RF  : 128.8502040816
     CB  : 124.4633965941
+    
+ - feature selection
+  1) SelectKBest와 feature importance 교집합 추출 (15개 피처)
+    XGB : 134.25
+    RF  : 132.77
+    CB  : 131.47
+
+  2) SelectKBest만 고려 (feature importance은 연속형 피처에만 효과적) (20개 피처)
+    XGB : 133.36
+    RF  : 129.47
+    CB  : 127.48
+    
+  3) SelectKBest만 고려 (feature importance은 연속형 피처에만 효과적) (피처25개 )
+    XGB : 126.47
+    RF  : 129.86
+    CB  : 121.75
+
+  4) SelectKBest만 고려 (feature importance은 연속형 피처에만 효과적) (28개 피처)
+    XGB : 
+    RF  : 
+    CB  : 129.87
+    
+  5) SelectKBest 25 + 정규화
+    XGB : 
+    RF  : 137.29
+    CB  : 143.40
+    
+  6) corr 25개 피처 추출
+    XGB : 128.81
+    RF  : 128.39
+    CB  : 122.66
 """
 
 
@@ -359,14 +390,17 @@ train_agg.shape, test_agg.shape #((404, 35), (150, 34))
 
 
 
-'''''''''''''''''''''''''''''''''Feature selection'''''''''''''''''''''''''''''''''
+
+
+'''''''''''''''''''''''''''''''''Feature Selection'''''''''''''''''''''''''''''''''
+########################### 1. Univariate Selection
 target_col = '등록차량수'
 X=train_agg.drop(columns=[target_col,'단지코드','지역'])
 Y=train_agg[target_col]
 
 
 from sklearn.feature_selection import SelectKBest,chi2
-select=SelectKBest(score_func=chi2, k=20)
+select=SelectKBest(score_func=chi2, k=25)
 fit=select.fit(X,Y)
 feature=fit.transform(X)
 
@@ -378,55 +412,79 @@ column_names = X.columns[select.get_support()]
 feature=pd.DataFrame(feature)
 column_names=column_names.tolist()
 feature.columns=column_names
-
-
-
-
-'''''''''''''''''''''''''''''''''Feature importance'''''''''''''''''''''''''''''''''
-#pip install sklearn
-from sklearn.ensemble import ExtraTreesClassifier
-model =ExtraTreesClassifier(n_estimators=100)
-model.fit(X,Y)
-X_values=model.feature_importances_
-X_imp=pd.DataFrame(X_values,X.columns)
-
-#Feature importance가 높은 순서대로 정렬.
-X_imp.columns=['Feature importance']
-X_imp=X_imp.sort_values(by='Feature importance',ascending=False)
+len(feature.columns)
 
 feature.columns
 '''
-'총세대수', '지하철', '버스', '단지내주차면수', '공급유형_공공임대(5년/10년/분납/분양)', '자격유형_D',
-'면적_30.0', '면적_35.0', '면적_45.0', '면적_50.0', '면적_40.0', '면적_55.0',
-'면적_25.0', '면적_70.0', '면적_15.0', '면적_20.0', '면적_100.0', '면적_60.0',
-'면적_80.0', '면적_65.0'
-'''
-X_imp[:20].index
-'''
-'단지내주차면수', '총세대수', '면적_35.0', '버스', '면적_45.0', '면적_50.0', '면적_55.0',
-'면적_25.0', '면적_30.0', '지하철', '자격유형_국민임대/장기전세_공급대상', '면적_20.0',
-'면적_40.0', '면적_15.0', '자격유형_A', '면적_70.0', '면적_80.0', '공급유형_국민임대/장기전세',
-'공급유형_영구임대', '자격유형_영구임대_공급대상'
+'총세대수', '지하철', '버스', '단지내주차면수', '임대건물구분_상가', '공급유형_공공임대(50년)',
+       '공급유형_공공임대(5년/10년/분납/분양)', '공급유형_영구임대', '공급유형_임대상가', '자격유형_D',
+       '자격유형_영구임대_공급대상', '면적_30.0', '면적_35.0', '면적_45.0', '면적_50.0', '면적_40.0',
+       '면적_55.0', '면적_25.0', '면적_70.0', '면적_15.0', '면적_20.0', '면적_100.0',
+       '면적_60.0', '면적_80.0', '면적_65.0'
 '''
 
-#Feature selection의 결과 컬럼과
-#Feature importance의 결과 컬중 일치하는 목록을
-#추출.
-same_list=[]
-for i in feature.columns.tolist():
-    for j in X_imp[:20].index.tolist():
-        if i==j:
-            same_list.append(i)
 
-#train_agg, test_agg에 이용할 컬럼명 형성
-same_list.append('단지코드')
-same_list.append('지역')
-same_list.append('등록차량수')
+new_col=['단지코드','지역','총세대수', '지하철', '버스', '단지내주차면수', '임대건물구분_상가', '공급유형_공공임대(50년)',
+       '공급유형_공공임대(5년/10년/분납/분양)', '공급유형_영구임대', '공급유형_임대상가', '자격유형_D',
+       '자격유형_영구임대_공급대상', '면적_30.0', '면적_35.0', '면적_45.0', '면적_50.0', '면적_40.0',
+       '면적_55.0', '면적_25.0', '면적_70.0', '면적_15.0', '면적_20.0', '면적_100.0',
+       '면적_60.0', '면적_80.0', '면적_65.0','등록차량수']
 
+len(new_col)
 
+train_agg=train_agg[new_col]
+test_agg=test_agg[new_col[0:27]]
 
-train_agg=train_agg[same_list]
-test_agg=test_agg[same_list[0:17]]
+########################### 2. Correlation Selection
+corr = train_agg.drop(['단지코드','지역'],1,).corr()["등록차량수"].abs().sort_values(ascending=False)
+corr
+'''
+등록차량수                      1.000000
+단지내주차면수                    0.852745
+총세대수                       0.603807
+공급유형_공공임대(5년/10년/분납/분양)    0.394441
+면적_55.0                    0.390710
+면적_45.0                    0.390211
+면적_70.0                    0.350513
+임대건물구분_상가                  0.311484
+공급유형_임대상가                  0.311484
+면적_50.0                    0.281322
+자격유형_D                     0.265910
+면적_80.0                    0.250215
+면적_100.0                   0.247175
+자격유형_A                     0.228166
+면적_35.0                    0.221946
+면적_65.0                    0.194124
+공급유형_영구임대                  0.192740
+자격유형_영구임대_공급대상             0.187965
+공급유형_행복주택                  0.178772
+자격유형_행복주택_공급대상             0.178772
+자격유형_국민임대/장기전세_공급대상        0.120495
+공급유형_공공임대(50년)             0.109185
+공급유형_국민임대/장기전세             0.106440
+면적_60.0                    0.103659
+버스                         0.102995
+면적_75.0                    0.097360
+면적_30.0                    0.081763
+면적_15.0                    0.078794
+면적_20.0                    0.072531
+면적_25.0                    0.046686
+지하철                        0.008872
+면적_40.0                    0.007468
+'''
+cor_col=corr.index[1:26]
+cor_col=['단지코드','지역','단지내주차면수', '총세대수', '공급유형_공공임대(5년/10년/분납/분양)',
+         '면적_55.0', '면적_45.0','면적_70.0', '임대건물구분_상가', '공급유형_임대상가', '면적_50.0',
+         '자격유형_D', '면적_80.0', '면적_100.0', '자격유형_A', '면적_35.0', '면적_65.0', '공급유형_영구임대',
+         '자격유형_영구임대_공급대상', '공급유형_행복주택', '자격유형_행복주택_공급대상', 
+         '자격유형_국민임대/장기전세_공급대상','공급유형_공공임대(50년)', '공급유형_국민임대/장기전세',
+         '면적_60.0', '버스', '면적_75.0', '등록차량수']
+
+len(cor_col)
+
+train_agg=train_agg[cor_col]
+test_agg=test_agg[cor_col[0:27]]
+
 
 
 ''''''''''''''''''''''''''''''''''학습 및 모델링.''''''''''''''''''''''''''''''''''
@@ -447,7 +505,7 @@ catb.fit(train_agg.drop(columns=[target_col,'단지코드']), train_agg[target_c
 
 submission['num'] = catb.predict(test_agg.drop('단지코드',axis=1))
 
-submission.to_csv('NEW_CB_features.csv', index=False)
+submission.to_csv('NEW_CB_corr25.csv', index=False)
 
 ########################### 2. XGB
 target_col = '등록차량수'
@@ -460,7 +518,7 @@ model_XGB.fit(train_agg.drop(columns=[target_col,'단지코드','지역']), trai
 #test데이터 수정
 submission['num']=model_XGB.predict(test_agg.drop(columns=['단지코드','지역']))
 
-submission.to_csv('NEW_XGB_features.csv', index=False)
+submission.to_csv('NEW_XGB_corr25.csv', index=False)
 
 
 ########################## 3. RF
@@ -481,7 +539,7 @@ pred = model.predict(x_test)   #42개 레코드셋 추출.
 
 submission['num'] = pred     #예측된 x_test 값을 'num'을 저장.
 
-submission.to_csv('NEW_RF_features.csv', index=False)
+submission.to_csv('NEW_RF_corr25.csv', index=False)
 
 
 
